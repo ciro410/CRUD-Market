@@ -3,15 +3,12 @@ const knex = require('../conexao');
 async function listarProdutos(req, res) {
     try {
         const categoria = req.query.categoria;
-        let query = '';
         let produtos = '';
         const id = Number(req.usuario.id)
 
         if (categoria) {
-            query = 'select * from produtos where usuario_id = $1 and categoria =$2';
             produtos = await knex('produtos').where({ usuario_id: id, categoria });
         } else {
-            query = `select * from produtos where usuario_id = $1`
             produtos = await knex('produtos').where('usuario_id', id);
         }
 
@@ -24,9 +21,7 @@ async function listarProdutos(req, res) {
 async function obterProduto(req, res) {
     const id = Number(req.params.id);
     try {
-        const query = `select * from produtos where id = $1 and usuario_id = $2`
         const produtos = await knex('produtos').where({ id, usuario_id: Number(req.usuario.id) });
-
 
         if (produtos.length === 0 || req.usuario.id !== produtos[0].usuario_id) {
             return res.status(404).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` })
@@ -57,7 +52,6 @@ async function cadastrarProduto(req, res) {
 
     try {
         const usuario_id = Number(req.usuario.id);
-        const query = 'insert into produtos (usuario_id, nome,quantidade,categoria,preco,descricao,imagem) values($1,$2,$3,$4,$5,$6,$7)';
         const dadosDoProduto = {
             usuario_id, nome, quantidade, categoria, preco, descricao, imagem
         }
@@ -91,8 +85,6 @@ async function atualizarProduto(req, res) {
     const imagem = req.body.imagem ?? produto[0].imagem;
 
     try {
-        const query = "update produtos set nome =$1, quantidade =$2, categoria =$3 , preco =$4 ,descricao = $5, imagem = $6 where id = $7";
-
         const dadosDoProduto = {
             nome, quantidade, categoria, preco, descricao, imagem
         }
@@ -121,7 +113,6 @@ async function deletarProduto(req, res) {
             return res.status(401).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` });
         };
 
-        const query = "delete from produtos where id =$1";
         const usuarioDeletado = await knex('produtos').del().where('id', id)
 
         if (usuarioDeletado.length === 0) {
