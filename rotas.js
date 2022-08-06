@@ -4,7 +4,8 @@ const { listarUsuarios,
     cadastrarUsuario,
     loginUsuario,
     detalharUsuario,
-    atualizarUsuario
+    atualizarUsuario,
+    apagarConta
 } = require('./controladores/usuarios');
 const { validarToken } = require('./middleware/autenticacao');
 const rotas = express();
@@ -17,7 +18,8 @@ rotas.post('/usuarios/login', loginUsuario);
 
 rotas.use(validarToken);
 rotas.get('/usuarios', detalharUsuario);
-rotas.patch('/usuarios/editar', atualizarUsuario)
+rotas.patch('/usuarios/editar', atualizarUsuario);
+rotas.delete('/usuario/apagar', apagarConta)
 
 // produtos
 

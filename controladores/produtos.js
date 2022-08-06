@@ -1,24 +1,21 @@
-const conexao = require('../conexao');
-const securePassword = require('secure-password');
-const pwd = securePassword();
-const jwt = require('jsonwebtoken');
-const jwtSecret = require("../jwt-secret")
+const knex = require('../conexao');
 
 async function listarProdutos(req, res) {
     try {
         const categoria = req.query.categoria;
         let query = '';
         let produtos = '';
+        const id = Number(req.usuario.id)
 
         if (categoria) {
             query = 'select * from produtos where usuario_id = $1 and categoria =$2';
-            produtos = await conexao.query(query, [Number(req.usuario.id), categoria]);
+            produtos = await knex('produtos').where({ usuario_id: id, categoria });
         } else {
             query = `select * from produtos where usuario_id = $1`
-            produtos = await conexao.query(query, [Number(req.usuario.id)]);
+            produtos = await knex('produtos').where('usuario_id', id);
         }
 
-        return res.status(200).json(produtos.rows)
+        return res.status(200).json(produtos)
     } catch (error) {
         return res.status(500).json({ mensagem: "Ocorreu um erro inesperado. - " + error.message });
     }
@@ -28,13 +25,14 @@ async function obterProduto(req, res) {
     const id = Number(req.params.id);
     try {
         const query = `select * from produtos where id = $1 and usuario_id = $2`
-        const produtos = await conexao.query(query, [id, Number(req.usuario.id)]);
+        const produtos = await knex('produtos').where({ id, usuario_id: Number(req.usuario.id) });
 
-        if (produtos.rowCount === 0 || req.usuario.id !== produtos.rows[0].usuario_id) {
+
+        if (produtos.length === 0 || req.usuario.id !== produtos[0].usuario_id) {
             return res.status(404).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` })
         }
 
-        return res.status(200).json(produtos.rows)
+        return res.status(200).json(produtos[0])
     } catch (error) {
         return res.status(500).json({ mensagem: "Ocorreu um erro inesperado. - " + error.message });
     }
@@ -60,7 +58,10 @@ async function cadastrarProduto(req, res) {
     try {
         const usuario_id = Number(req.usuario.id);
         const query = 'insert into produtos (usuario_id, nome,quantidade,categoria,preco,descricao,imagem) values($1,$2,$3,$4,$5,$6,$7)';
-        const produto = await conexao.query(query, [usuario_id, nome, quantidade, categoria, preco, descricao, imagem]);
+        const dadosDoProduto = {
+            usuario_id, nome, quantidade, categoria, preco, descricao, imagem
+        }
+        const produto = await knex('produtos').insert(dadosDoProduto)
         return res.status(200).json("Produto Adicionado com sucesso")
     } catch (error) {
         return res.status(500).json({ mensagem: "Ocorreu um erro inesperado. - " + error.message });
@@ -77,22 +78,25 @@ async function atualizarProduto(req, res) {
         return res.status(401).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` });
     }
 
-    const produto = await conexao.query("select * from produtos where id = $1", [id]);
-    if (produto.rowCount === 0) {
+    const produto = await knex('produtos').where('id', id);
+    if (produto.length === 0) {
         return res.status(401).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` });
     }
 
-    const nome = req.body.nome ?? produto.rows[0].nome;
-    const quantidade = req.body.quantidade ?? produto.rows[0].quantidade;
-    const categoria = req.body.categoria ?? produto.rows[0].categoria;
-    const preco = req.body.preco ?? produto.rows[0].preco;
-    const descricao = req.body.descricao ?? produto.rows[0].descricao;
-    const imagem = req.body.imagem ?? produto.rows[0].imagem;
+    const nome = req.body.nome ?? produto[0].nome;
+    const quantidade = req.body.quantidade ?? produto[0].quantidade;
+    const categoria = req.body.categoria ?? produto[0].categoria;
+    const preco = req.body.preco ?? produto[0].preco;
+    const descricao = req.body.descricao ?? produto[0].descricao;
+    const imagem = req.body.imagem ?? produto[0].imagem;
 
     try {
         const query = "update produtos set nome =$1, quantidade =$2, categoria =$3 , preco =$4 ,descricao = $5, imagem = $6 where id = $7";
 
-        const produtoAtualizado = await conexao.query(query, [nome, quantidade, categoria, preco, descricao, imagem, id])
+        const dadosDoProduto = {
+            nome, quantidade, categoria, preco, descricao, imagem
+        }
+        const produtoAtualizado = await knex('produtos').update(dadosDoProduto).where('id', id)
 
         return res.status(200).json("Produto Atualizado com sucesso.")
     } catch (error) {
@@ -112,16 +116,15 @@ async function deletarProduto(req, res) {
     }
 
     try {
-
-        const produto = await conexao.query("select * from produtos where id = $1", [id]);
-        if (produto.rowCount === 0) {
+        const produto = await knex('produtos').where('id', id)
+        if (produto.length === 0) {
             return res.status(401).json({ mensagem: `Não existe produto cadastrado com o ID ${id}` });
         };
 
         const query = "delete from produtos where id =$1";
-        const usuarioDeletado = await conexao.query(query, [id]);
+        const usuarioDeletado = await knex('produtos').del().where('id', id)
 
-        if (usuarioDeletado.rowCount === 0) {
+        if (usuarioDeletado.length === 0) {
             return res.status(200).json({ mensagem: "Não foi possiível deletar usuario" });
         }
         return res.status(200).json({ mensagem: "Usuario Deletado com sucesso" });
